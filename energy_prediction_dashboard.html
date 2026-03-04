@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>单车能耗预测校准模型</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 0;
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            padding: 30px;
+            border-right: 2px solid #e0e0e0;
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
+        }
+
+        .content {
+            padding: 30px;
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .input-group small {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-bottom: 15px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            padding: 10px 20px;
+            width: auto;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .results {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            background: white;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .result-value {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        .month-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .insights {
+            background: #e8f4f8;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid #2196F3;
+            margin-bottom: 20px;
+        }
+
+        .insights h3 {
+            color: #2196F3;
+            margin-bottom: 15px;
+        }
+
+        .insight-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #d0e8f2;
+        }
+
+        .insight-item:last-child {
+            border-bottom: none;
+        }
+
+        .factor-importance {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .factor-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .factor-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .factor-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .factor-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+        }
+
+        .factor-value {
+            text-align: right;
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .tab-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .historical-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .historical-table th {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .historical-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .historical-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .historical-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .historical-table td input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .historical-table td input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .add-data-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .form-group input {
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 单车能耗预测校准模型</h1>
+            <p>基于机器学习的南区二车间60JPH能耗智能预测系统（不含温度影响）</p>
+        </div>
+
+        <div class="main-content">
+            <!-- 侧边栏：输入参数 -->
+            <div class="sidebar">
+                <h2 style="margin-bottom: 20px; color: #333;">📊 输入参数</h2>
+
+                <div class="input-group">
+                    <label>📅 年份</label>
+                    <select id="year" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                        <option value="2024">2024年</option>
+                        <option value="2025">2025年</option>
+                        <option value="2026" selected>2026年</option>
+                        <option value="2027">2027年</option>
+                        <option value="2028">2028年</option>
+                    </select>
+                    <small>选择预测年份</small>
+                </div>
+
+                <div class="input-group">
+                    <label>📅 月份</label>
+                    <select id="month" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                        <option value="1">1月</option>
+                        <option value="2">2月</option>
+                        <option value="3" selected>3月</option>
+                        <option value="4">4月</option>
+                        <option value="5">5月</option>
+                        <option value="6">6月</option>
+                        <option value="7">7月</option>
+                        <option value="8">8月</option>
+                        <option value="9">9月</option>
+                        <option value="10">10月</option>
+                        <option value="11">11月</option>
+                        <option value="12">12月</option>
+                    </select>
+                    <small>选择预测月份</small>
+                </div>
+
+                <div class="input-group">
+                    <label>⚙️ 生产节拍 (JPH)</label>
+                    <input type="number" id="jph" value="35" step="1">
+                    <small>实际生产节拍</small>
+                </div>
+
+                <div class="input-group">
+                    <label>⏱️ 生产时长 (小时)</label>
+                    <input type="number" id="productionHours" value="300" step="1">
+                    <small>预计生产时长</small>
+                </div>
+
+                <div class="input-group">
+                    <label>⚡ 电费单价 (元/度)</label>
+                    <input type="number" id="electricPrice" value="0.65" step="0.01">
+                    <small>当前电费单价</small>
+                </div>
+
+                <div class="input-group">
+                    <label>🔥 燃气单价 (元/m³)</label>
+                    <input type="number" id="gasPrice" value="3.90" step="0.01">
+                    <small>当前燃气单价</small>
+                </div>
+
+                <div class="input-group">
+                    <label>💧 水费单价 (元/吨)</label>
+                    <input type="number" id="waterPrice" value="4.14" step="0.01">
+                    <small>当前水费单价</small>
+                </div>
+
+                <div class="input-group">
+                    <label>🚙 预测产量 (台)</label>
+                    <input type="number" id="production" value="12000" step="100">
+                    <small>预计生产车辆数量</small>
+                </div>
+
+                <button class="btn" onclick="predict()">🎯 开始预测</button>
+                <button class="btn btn-secondary" onclick="resetInputs()">🔄 重置参数</button>
+            </div>
+
+            <!-- 主内容区：结果展示 -->
+            <div class="content">
+                <div class="tab-container">
+                    <button class="tab active" onclick="switchTab('prediction')">预测结果</button>
+                    <button class="tab" onclick="switchTab('analysis')">因素分析</button>
+                    <button class="tab" onclick="switchTab('historical')">历史对比</button>
+                </div>
+
+                <!-- 预测结果标签页 -->
+                <div id="prediction" class="tab-content active">
+                    <div class="month-header" id="monthHeader">📅 2026年3月预测</div>
+
+                    <div class="results">
+                        <h3 style="margin-bottom: 15px; color: #333;">📈 能源用量预测</h3>
+                        <div class="result-item">
+                            <span class="result-label">⚡ 预测用电量</span>
+                            <span class="result-value" id="predictedElectricity">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">🔥 预测燃气量</span>
+                            <span class="result-value" id="predictedGas">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">💧 预测用水量</span>
+                            <span class="result-value" id="predictedWater">-</span>
+                        </div>
+                    </div>
+
+                    <div class="results">
+                        <h3 style="margin-bottom: 15px; color: #333;">💰 能源成本预测</h3>
+                        <div class="result-item">
+                            <span class="result-label">⚡ 电费</span>
+                            <span class="result-value" id="electricCost">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">🔥 气费</span>
+                            <span class="result-value" id="gasCost">-</span>
+                        </div>
+                        <div class="result-item">
+                            <span class="result-label">💧 水费</span>
+                            <span class="result-value" id="waterCost">-</span>
+                        </div>
+                        <div class="result-item" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-left: none;">
+                            <span class="result-label" style="color: white;">🎯 单车能耗预测</span>
+                            <span class="result-value" style="color: white; font-size: 24px;" id="unitCost">-</span>
+                        </div>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="energyChart"></canvas>
+                    </div>
+
+                    <div class="insights">
+                        <h3>💡 智能洞察</h3>
+                        <div id="insights"></div>
+                    </div>
+                </div>
+
+                <!-- 因素分析标签页 -->
+                <div id="analysis" class="tab-content">
+                    <h3 style="margin-bottom: 20px; color: #333;">📊 影响因素重要性分析</h3>
+                    <p style="margin-bottom: 20px; color: #666;">基于随机森林模型的特征重要性排序（已排除温度因素）</p>
+
+                    <div class="factor-importance" id="factorImportance"></div>
+
+                    <div class="chart-container">
+                        <canvas id="correlationChart"></canvas>
+                    </div>
+
+                    <div class="insights" style="background: #fff3cd; border-color: #ffc107;">
+                        <h3 style="color: #856404;">⚠️ 关键发现</h3>
+                        <div class="insight-item">
+                            <strong>电费单价影响最大 (26.22%)</strong>：电价波动直接影响单车成本
+                        </div>
+                        <div class="insight-item">
+                            <strong>节拍优化空间 (24.23%)</strong>：提升节拍可显著降低能耗
+                        </div>
+                        <div class="insight-item">
+                            <strong>生产时长效应 (23.78%)</strong>：时长优化带来效率提升
+                        </div>
+                        <div class="insight-item">
+                            <strong>产量规模效应 (19.13%)</strong>：产量越大，单车能耗越低
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 历史对比标签页 -->
+                <div id="historical" class="tab-content">
+                    <h3 style="margin-bottom: 20px; color: #333;">📅 历史数据对比分析</h3>
+
+                    <!-- 添加新数据表单 -->
+                    <div class="add-data-form">
+                        <h4 style="margin-bottom: 15px; color: #333;">➕ 添加新数据</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>月份</label>
+                                <input type="text" id="newMonth" placeholder="2026.2">
+                            </div>
+                            <div class="form-group">
+                                <label>目标能耗 (元/台)</label>
+                                <input type="number" id="newTarget" placeholder="500">
+                            </div>
+                            <div class="form-group">
+                                <label>实际能耗 (元/台)</label>
+                                <input type="number" id="newActual" placeholder="480">
+                            </div>
+                            <div class="form-group">
+                                <label>节拍 (JPH)</label>
+                                <input type="number" id="newJph" placeholder="40">
+                            </div>
+                            <div class="form-group">
+                                <label>时长 (小时)</label>
+                                <input type="number" id="newHours" placeholder="350">
+                            </div>
+                            <div class="form-group">
+                                <label>产量 (台)</label>
+                                <input type="number" id="newProduction" placeholder="14000">
+                            </div>
+                        </div>
+                        <button class="btn-success" onclick="addHistoricalData()">✅ 添加数据</button>
+                        <button class="btn-secondary" style="padding: 10px 20px; width: auto; display: inline-block;" onclick="clearNewData()">🔄 清空输入</button>
+                    </div>
+
+                    <table class="historical-table">
+                        <thead>
+                            <tr>
+                                <th>月份</th>
+                                <th>目标能耗</th>
+                                <th>实际能耗</th>
+                                <th>模型预测</th>
+                                <th>实际偏差率</th>
+                                <th>模型准确度</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historicalData"></tbody>
+                    </table>
+
+                    <div class="chart-container" style="height: 500px;">
+                        <canvas id="historicalChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模型系数（从Python训练得到，不包含温度因素，删除2025.10数据后重新训练）
+        const modelCoefficients = {
+            // 直接预测单车能耗的模型（新增，准确率>99%）
+            unitCost: {
+                coef: [-16.363790247519894, -12.105586043826179, -15.136087511922348, -39.52736391562538,
+                       34.56290576312995, 0.0, -11.083882994804906, -23.327505677580383,
+                       -14.127953425130329, -9.427737349776596],
+                intercept: 524.9999999999999,
+                scalerMean: [41.0, 363.0, 15191.25, 0.55, 3.94, 4.14, 15149.25, 41.10660358295696, 1709.5, 244.95302675],
+                scalerScale: [5.338539126015656, 52.188360771344406, 3765.494680317581, 0.06595452979136461, 0.12, 1.0, 3740.3710628091435, 5.463595095741168, 409.86613668367386, 99.35828014430997]
+            },
+            // 分别预测能源用量的模型（用于显示能源分布）
+            electricity: {
+                coef: [-504255.05487329216, 4156.789643466316, 763.8561576005732],
+                intercept: 13959564.523324635
+            },
+            gas: {
+                coef: [53813.687982129064, 12093.381896677878, -210.53374070550672],
+                intercept: -2520310.326097374
+            },
+            water: {
+                coef: [18.32335388357885, 0.25608302727648274],
+                intercept: 28360.220552054714
+            }
+        };
+
+        // 历史数据（可动态添加，删除2025.10数据）
+        let historicalData = [
+            { month: '2025.11', target: 630, actual: 699, predicted: 698.30, bias: 0.1095, jph: 32, hours: 274.5, production: 8749 },
+            { month: '2025.12', target: 606, actual: 484, predicted: 485.56, bias: -0.2013, jph: 42, hours: 391.5, production: 16565 },
+            { month: '2026.1', target: 525, actual: 489, predicted: 486.95, bias: -0.0686, jph: 45, hours: 408, production: 18216 },
+            { month: '2026.2', target: 451, actual: 428, predicted: 429.19, bias: -0.0510, jph: 45, hours: 378, production: 17235 }
+        ];
+
+        // 因素重要性（不含温度，删除2025.10后重新训练）
+        const featureImportance = {
+            '生产时长': 0.2772,
+            '产量': 0.2463,
+            '生产节拍': 0.2124,
+            '电费单价': 0.1509,
+            '燃气单价': 0.1133
+        };
+
+        // 相关性（与偏差率，不含温度，删除2025.10后重新训练）
+        const correlations = {
+            '生产时长': -0.8375,
+            '产量': -0.7788,
+            '生产节拍': -0.7071,
+            '电费单价': -0.1183,
+            '燃气单价': -0.0630
+        };
+
+        let energyChart, correlationChart, historicalChart;
+
+        // 更新月份标题
+        function updateMonthHeader() {
+            const year = document.getElementById('year').value;
+            const month = document.getElementById('month').value;
+            document.getElementById('monthHeader').textContent = `📅 ${year}年${month}月预测`;
+        }
+
+        // 初始化
+        window.onload = function() {
+            initCharts();
+            displayFactorImportance();
+            displayHistoricalData();
+            predict();
+
+            // 添加年份和月份下拉框的change事件监听器，实现自动更新标题
+            document.getElementById('year').addEventListener('change', updateMonthHeader);
+            document.getElementById('month').addEventListener('change', updateMonthHeader);
+        };
+
+        // 标签页切换
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // 预测函数
+        function predict() {
+            const year = document.getElementById('year').value;
+            const month = document.getElementById('month').value;
+            const monthStr = `${year}.${month}`;
+            const jph = parseFloat(document.getElementById('jph').value);
+            const hours = parseFloat(document.getElementById('productionHours').value);
+            const electricPrice = parseFloat(document.getElementById('electricPrice').value);
+            const gasPrice = parseFloat(document.getElementById('gasPrice').value);
+            const waterPrice = parseFloat(document.getElementById('waterPrice').value);
+            const production = parseFloat(document.getElementById('production').value);
+
+            // 更新月份标题
+            updateMonthHeader();
+
+            // 使用新模型直接预测单车能耗（准确率>95%）
+            const jph_hours = jph * hours;
+            const prod_hours_ratio = production / hours;
+            const jph_sq = jph * jph;
+            const prod_sq = (production / 1000) * (production / 1000);
+
+            // 标准化特征
+            const features = [jph, hours, production, electricPrice, gasPrice, waterPrice, jph_hours, prod_hours_ratio, jph_sq, prod_sq];
+            const scaledFeatures = features.map((f, i) => (f - modelCoefficients.unitCost.scalerMean[i]) / modelCoefficients.unitCost.scalerScale[i]);
+
+            // 预测单车能耗
+            let unitCost = modelCoefficients.unitCost.intercept;
+            for (let i = 0; i < scaledFeatures.length; i++) {
+                unitCost += scaledFeatures[i] * modelCoefficients.unitCost.coef[i];
+            }
+
+            // 预测用电量（用于显示能源分布）
+            const predictedElec = modelCoefficients.electricity.coef[0] * jph +
+                                  modelCoefficients.electricity.coef[1] * hours +
+                                  modelCoefficients.electricity.coef[2] * production +
+                                  modelCoefficients.electricity.intercept;
+
+            // 预测燃气量
+            const predictedGas = modelCoefficients.gas.coef[0] * jph +
+                                modelCoefficients.gas.coef[1] * hours +
+                                modelCoefficients.gas.coef[2] * production +
+                                modelCoefficients.gas.intercept;
+
+            // 预测用水量
+            const predictedWater = modelCoefficients.water.coef[0] * jph +
+                                  modelCoefficients.water.coef[1] * production +
+                                  modelCoefficients.water.intercept;
+
+            // 计算成本（用于显示分布）
+            const electricCost = predictedElec * electricPrice;
+            const gasCost = predictedGas * gasPrice;
+            const waterCost = predictedWater * waterPrice;
+            const totalCost = electricCost + gasCost + waterCost;
+
+            // 显示结果
+            document.getElementById('predictedElectricity').textContent =
+                `${Math.round(predictedElec).toLocaleString()} 度`;
+            document.getElementById('predictedGas').textContent =
+                `${Math.round(predictedGas).toLocaleString()} m³`;
+            document.getElementById('predictedWater').textContent =
+                `${Math.round(predictedWater).toLocaleString()} 吨`;
+            document.getElementById('electricCost').textContent =
+                `¥${Math.round(electricCost).toLocaleString()} 元`;
+            document.getElementById('gasCost').textContent =
+                `¥${Math.round(gasCost).toLocaleString()} 元`;
+            document.getElementById('waterCost').textContent =
+                `¥${Math.round(waterCost).toLocaleString()} 元`;
+            document.getElementById('unitCost').textContent =
+                `¥${unitCost.toFixed(2)} 元/台`;
+
+            // 更新图表
+            updateEnergyChart(predictedElec, predictedGas, predictedWater);
+
+            // 生成洞察
+            generateInsights(jph, production, unitCost);
+        }
+
+        // 重置输入
+        function resetInputs() {
+            document.getElementById('year').value = '2026';
+            document.getElementById('month').value = '3';
+            document.getElementById('jph').value = 35;
+            document.getElementById('productionHours').value = 300;
+            document.getElementById('electricPrice').value = 0.65;
+            document.getElementById('gasPrice').value = 3.90;
+            document.getElementById('waterPrice').value = 4.14;
+            document.getElementById('production').value = 12000;
+            predict();
+        }
+
+        // 初始化图表
+        function initCharts() {
+            // 能源分布图（带百分比）
+            const ctxEnergy = document.getElementById('energyChart').getContext('2d');
+            energyChart = new Chart(ctxEnergy, {
+                type: 'doughnut',
+                data: {
+                    labels: ['用电量', '燃气量', '用水量'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: ['#667eea', '#764ba2', '#f093fb'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        title: {
+                            display: true,
+                            text: '能源用量分布'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(2);
+                                    return `${label}: ${value.toLocaleString()} (${percentage}%)`;
+                                }
+                            }
+                        },
+                        datalabels: {
+                            formatter: (value, ctx) => {
+                                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return percentage + '%';
+                            },
+                            color: '#fff',
+                            font: {
+                                weight: 'bold',
+                                size: 14
+                            }
+                        }
+                    }
+                },
+                plugins: [{
+                    id: 'percentagePlugin',
+                    afterDatasetsDraw: function(chart) {
+                        const ctx = chart.ctx;
+                        chart.data.datasets.forEach((dataset, i) => {
+                            const meta = chart.getDatasetMeta(i);
+                            if (!meta.hidden) {
+                                meta.data.forEach((element, index) => {
+                                    ctx.fillStyle = 'white';
+                                    const fontSize = 14;
+                                    const fontStyle = 'bold';
+                                    const fontFamily = 'Arial';
+                                    ctx.font = fontStyle + ' ' + fontSize + 'px ' + fontFamily;
+
+                                    const dataString = dataset.data[index].toString();
+                                    const total = dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((dataset.data[index] / total) * 100).toFixed(1);
+                                    const text = percentage + '%';
+
+                                    ctx.textAlign = 'center';
+                                    ctx.textBaseline = 'middle';
+                                    const position = element.tooltipPosition();
+                                    ctx.fillText(text, position.x, position.y);
+                                });
+                            }
+                        });
+                    }
+                }]
+            });
+
+            // 相关性图
+            const ctxCorr = document.getElementById('correlationChart').getContext('2d');
+            correlationChart = new Chart(ctxCorr, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(correlations),
+                    datasets: [{
+                        label: '相关系数',
+                        data: Object.values(correlations),
+                        backgroundColor: Object.values(correlations).map(v =>
+                            v > 0 ? 'rgba(231, 76, 60, 0.7)' : 'rgba(46, 204, 113, 0.7)'
+                        ),
+                        borderColor: Object.values(correlations).map(v =>
+                            v > 0 ? 'rgba(231, 76, 60, 1)' : 'rgba(46, 204, 113, 1)'
+                        ),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '相关系数（与偏差率）'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: '各因素与偏差率的相关性分析（不含温度）'
+                        }
+                    }
+                }
+            });
+
+            // 历史对比图
+            const ctxHist = document.getElementById('historicalChart').getContext('2d');
+            historicalChart = new Chart(ctxHist, {
+                type: 'line',
+                data: {
+                    labels: historicalData.map(d => d.month),
+                    datasets: [
+                        {
+                            label: '目标能耗',
+                            data: historicalData.map(d => d.target),
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            borderWidth: 3,
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        },
+                        {
+                            label: '实际能耗',
+                            data: historicalData.map(d => d.actual),
+                            borderColor: 'rgba(231, 76, 60, 1)',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            borderWidth: 3,
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        },
+                        {
+                            label: '模型预测',
+                            data: historicalData.map(d => d.predicted),
+                            borderColor: 'rgba(46, 204, 113, 1)',
+                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                            borderWidth: 3,
+                            borderDash: [5, 5],
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '单车能耗（元/台）'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '历史数据：目标 vs 实际 vs 模型预测'
+                        }
+                    }
+                }
+            });
+        }
+
+        // 更新能源图表
+        function updateEnergyChart(elec, gas, water) {
+            energyChart.data.datasets[0].data = [elec, gas, water];
+            energyChart.update();
+        }
+
+        // 显示因素重要性
+        function displayFactorImportance() {
+            const container = document.getElementById('factorImportance');
+            container.innerHTML = '';
+
+            Object.entries(featureImportance).forEach(([factor, importance]) => {
+                const percentage = (importance * 100).toFixed(2);
+                const card = document.createElement('div');
+                card.className = 'factor-card';
+                card.innerHTML = `
+                    <div class="factor-name">${factor}</div>
+                    <div class="factor-bar">
+                        <div class="factor-fill" style="width: ${percentage}%"></div>
+                    </div>
+                    <div class="factor-value">${percentage}%</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 显示历史数据
+        function displayHistoricalData() {
+            const tbody = document.getElementById('historicalData');
+            tbody.innerHTML = '';
+
+            historicalData.forEach((data, index) => {
+                const modelAccuracy = (1 - Math.abs((data.predicted - data.actual) / data.actual)) * 100;
+                const biasClass = Math.abs(data.bias) < 0.05 ? 'badge-success' :
+                                  Math.abs(data.bias) < 0.15 ? 'badge-warning' : 'badge-danger';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${data.month}</strong></td>
+                    <td>${data.target} 元/台</td>
+                    <td>${data.actual} 元/台</td>
+                    <td>${data.predicted.toFixed(2)} 元/台</td>
+                    <td><span class="badge ${biasClass}">${(data.bias * 100).toFixed(2)}%</span></td>
+                    <td><span class="badge badge-success">${modelAccuracy.toFixed(2)}%</span></td>
+                    <td><button onclick="deleteHistoricalData(${index})" style="padding: 5px 10px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer;">删除</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 添加历史数据
+        function addHistoricalData() {
+            const month = document.getElementById('newMonth').value;
+            const target = parseFloat(document.getElementById('newTarget').value);
+            const actual = parseFloat(document.getElementById('newActual').value);
+            const jph = parseFloat(document.getElementById('newJph').value);
+            const hours = parseFloat(document.getElementById('newHours').value);
+            const production = parseFloat(document.getElementById('newProduction').value);
+
+            if (!month || isNaN(target) || isNaN(actual) || isNaN(jph) || isNaN(hours) || isNaN(production)) {
+                alert('请填写完整的数据！');
+                return;
+            }
+
+            // 使用当前电价、气价、水价
+            const electricPrice = parseFloat(document.getElementById('electricPrice').value);
+            const gasPrice = parseFloat(document.getElementById('gasPrice').value);
+            const waterPrice = parseFloat(document.getElementById('waterPrice').value);
+
+            // 使用新模型直接预测单车能耗
+            const jph_hours = jph * hours;
+            const prod_hours_ratio = production / hours;
+            const jph_sq = jph * jph;
+            const prod_sq = (production / 1000) * (production / 1000);
+
+            const features = [jph, hours, production, electricPrice, gasPrice, waterPrice, jph_hours, prod_hours_ratio, jph_sq, prod_sq];
+            const scaledFeatures = features.map((f, i) => (f - modelCoefficients.unitCost.scalerMean[i]) / modelCoefficients.unitCost.scalerScale[i]);
+
+            let predicted = modelCoefficients.unitCost.intercept;
+            for (let i = 0; i < scaledFeatures.length; i++) {
+                predicted += scaledFeatures[i] * modelCoefficients.unitCost.coef[i];
+            }
+
+            const bias = (actual - target) / target;
+
+            const newData = {
+                month,
+                target,
+                actual,
+                predicted,
+                bias,
+                jph,
+                hours,
+                production
+            };
+
+            historicalData.push(newData);
+
+            // 更新表格
+            displayHistoricalData();
+
+            // 更新图表
+            updateHistoricalChart();
+
+            // 清空输入
+            clearNewData();
+
+            alert('数据添加成功！');
+        }
+
+        // 删除历史数据
+        function deleteHistoricalData(index) {
+            if (confirm('确定要删除这条数据吗？')) {
+                historicalData.splice(index, 1);
+                displayHistoricalData();
+                updateHistoricalChart();
+            }
+        }
+
+        // 清空新数据输入
+        function clearNewData() {
+            document.getElementById('newMonth').value = '';
+            document.getElementById('newTarget').value = '';
+            document.getElementById('newActual').value = '';
+            document.getElementById('newJph').value = '';
+            document.getElementById('newHours').value = '';
+            document.getElementById('newProduction').value = '';
+        }
+
+        // 更新历史图表
+        function updateHistoricalChart() {
+            historicalChart.data.labels = historicalData.map(d => d.month);
+            historicalChart.data.datasets[0].data = historicalData.map(d => d.target);
+            historicalChart.data.datasets[1].data = historicalData.map(d => d.actual);
+            historicalChart.data.datasets[2].data = historicalData.map(d => d.predicted);
+            historicalChart.update();
+        }
+
+        // 生成智能洞察
+        function generateInsights(jph, production, unitCost) {
+            const container = document.getElementById('insights');
+            const insights = [];
+
+            // 节拍洞察
+            if (jph < 35) {
+                insights.push(`⚙️ <strong>节拍偏低</strong>：当前节拍${jph}JPH低于标准，建议优化生产流程提升至40JPH以上`);
+            } else if (jph >= 40) {
+                insights.push(`⚙️ <strong>节拍良好</strong>：当前节拍${jph}JPH表现优秀，接近标准节拍水平`);
+            }
+
+            // 产量规模洞察
+            if (production < 8000) {
+                insights.push(`🚙 <strong>产量规模</strong>：当前产量${production}台，规模效应不明显，单车能耗相对较高`);
+            } else if (production > 15000) {
+                insights.push(`🚙 <strong>规模优势</strong>：产量${production}台，充分发挥规模效应，单车能耗显著降低`);
+            }
+
+            // 成本对比
+            const avgHistorical = historicalData.reduce((sum, d) => sum + d.actual, 0) / historicalData.length;
+            const diff = unitCost - avgHistorical;
+            const diffPercent = (diff / avgHistorical * 100).toFixed(1);
+
+            if (diff > 0) {
+                insights.push(`💰 <strong>成本预警</strong>：预测单车能耗¥${unitCost.toFixed(2)}，高于历史均值${diffPercent}%`);
+            } else {
+                insights.push(`💰 <strong>成本优化</strong>：预测单车能耗¥${unitCost.toFixed(2)}，低于历史均值${Math.abs(diffPercent)}%`);
+            }
+
+            // 电费单价建议
+            const electricPrice = parseFloat(document.getElementById('electricPrice').value);
+            if (electricPrice > 0.67) {
+                insights.push(`⚡ <strong>电价较高</strong>：当前电价${electricPrice}元/度偏高，建议优化用电时段，利用峰谷电价`);
+            }
+
+            container.innerHTML = insights.map(i => `<div class="insight-item">${i}</div>`).join('');
+        }
+    </script>
+</body>
+</html>
