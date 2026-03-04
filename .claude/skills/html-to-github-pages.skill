@@ -1,0 +1,133 @@
+---
+name: html-to-github-pages
+description: 将HTML文件推送到GitHub并部署为GitHub Pages，使其可通过 username.github.io/repo-name 格式在线访问
+version: 1.0.0
+author: Claude
+keywords: [html, github-pages, git, deploy, web]
+---
+
+# HTML to GitHub Pages 部署助手
+
+当用户要求将HTML文件转换为GitHub Pages格式、部署HTML到GitHub、或创建在线可访问的网页时，执行以下任务流程。
+
+## 任务流程
+
+### 步骤1：创建任务列表
+使用TodoWrite工具创建以下任务：
+1. 检查Git仓库状态
+2. 收集用户信息
+3. 配置Git仓库
+4. 添加并提交文件
+5. 推送到GitHub
+6. 创建README
+7. 提供配置指引
+
+### 步骤2：检查Git仓库
+检查当前目录是否已是Git仓库：
+- 运行 `git status`
+- 如果不是Git仓库，运行 `git init`
+- 标记任务为完成
+
+### 步骤3：收集必要信息
+如果用户未提供以下信息，使用AskUserQuestion工具询问：
+- GitHub用户名
+- GitHub仓库名（建议格式：项目名-github-pages）
+- HTML文件路径（如果未指定）
+- 标记任务为完成
+
+### 步骤4：配置远程仓库
+根据收集的信息：
+1. 检查是否已有远程仓库：`git remote -v`
+2. 如果没有，添加：`git remote add origin https://github.com/{username}/{repo-name}.git`
+3. 如果有，更新：`git remote set-url origin https://github.com/{username}/{repo-name}.git`
+4. 标记任务为完成
+
+### 步骤5：添加并提交文件
+1. 首先检查HTML文件是否存在
+2. 添加文件：`git add {html-file}`
+3. 提交文件：
+```bash
+git commit -m "Deploy HTML to GitHub Pages
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+```
+4. 标记任务为完成
+
+### 步骤6：创建README文件
+使用Write工具创建README.md，包含：
+- 项目标题和简介
+- GitHub Pages在线访问链接：`https://{username}.github.io/{repo-name}/{html-filename}`
+- 本地使用说明
+- GitHub Pages启用步骤（详细说明）
+- 注意事项（资源文件、部署时间等）
+然后添加并提交README：
+```bash
+git add README.md
+git commit -m "Add README with GitHub Pages setup instructions
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+```
+标记任务为完成
+
+### 步骤7：推送到GitHub
+1. 确保分支名为main：`git branch -M main`
+2. 推送到远程：`git push -u origin main`
+3. 标记任务为完成
+
+### 步骤8：提供配置指引
+向用户清晰展示：
+
+**完成！文件已推送到GitHub。**
+
+**下一步：启用GitHub Pages**
+
+1. 访问您的仓库：https://github.com/{username}/{repo-name}
+2. 点击顶部的 **Settings**（设置）
+3. 在左侧菜单找到 **Pages**
+4. 在 "Build and deployment" 部分：
+   - **Source**: 选择 "Deploy from a branch"
+   - **Branch**: 选择 "main"，文件夹选择 "/ (root)"
+   - 点击 **Save**
+5. 等待1-2分钟让GitHub自动部署
+
+**部署完成后访问：**
+`https://{username}.github.io/{repo-name}/{html-filename}`
+
+标记所有任务为完成
+
+## 错误处理
+
+### 仓库不存在
+如果推送失败，提示用户：
+"GitHub仓库不存在，请先在GitHub上创建仓库：https://github.com/new"
+
+### 文件路径错误
+如果HTML文件不存在，列出当前目录的HTML文件并询问用户选择。
+
+### 推送权限问题
+如果遇到权限错误，提示用户：
+1. 检查GitHub登录状态
+2. 确认仓库访问权限
+3. 可能需要配置SSH密钥或个人访问令牌
+
+## 额外检查
+
+部署前检查HTML文件：
+- 如果HTML引用了外部CSS/JS/图片，提醒用户也需要添加这些文件
+- 建议使用相对路径而非绝对路径
+- 提醒用户检查跨域资源引用问题
+
+## 输出格式
+
+最终输出必须包含：
+- ✅ 成功推送的文件列表
+- 📦 GitHub仓库URL
+- 🌐 预期的GitHub Pages访问URL
+- 📋 详细的启用步骤
+- ⏱️ 提醒：GitHub Pages部署需要1-2分钟
+
+## 示例调用
+
+用户说："将我的 index.html 部署到GitHub Pages"
+或："把这个HTML文件转为bit.github.io格式"
+或："/html-to-github-pages"
